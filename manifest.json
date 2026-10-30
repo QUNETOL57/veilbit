@@ -1,8 +1,8 @@
 {
 	"id": "veilbit",
 	"name": "Veilbit",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.0.0",
-	"description": "Скрывает секреты в заметках и открывает их по нажатию.",
+	"description": "Mask secrets in your notes and reveal them on click.",
 	"isDesktopOnly": false
 }

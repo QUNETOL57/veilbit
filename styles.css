@@ -13,3 +13,21 @@
 	color: var(--text-normal);
 	outline: 1px solid var(--interactive-accent);
 }
+
+.veilbit-secret-editor {
+	box-sizing: border-box;
+	display: block;
+	height: var(--veilbit-textarea-height, 2.5em);
+	max-width: 100%;
+	min-height: 2.5em;
+	min-width: 0;
+	overflow-wrap: anywhere;
+	resize: none;
+	white-space: pre-wrap;
+	width: 100%;
+}
+
+.modal:has(.veilbit-secret-editor) {
+	max-width: min(38rem, calc(100vw - 2rem));
+	width: min(38rem, calc(100vw - 2rem));
+}

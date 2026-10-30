@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "veilbit",
+	"version": "1.0.1",
+	"description": "Mask secrets in your notes and reveal them on click.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
@@ -10,7 +10,7 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint ."
 	},
-	"keywords": [],
+	"keywords": ["obsidian", "plugin", "secrets", "privacy", "masking"],
 	"license": "0-BSD",
 	"devDependencies": {
 		"@eslint/js": "^9.39.4",

@@ -1,5 +1,6 @@
 import {
 	Editor,
+	MarkdownView,
 	Menu,
 	Modal,
 	Notice,
@@ -7,6 +8,7 @@ import {
 	Setting,
 } from 'obsidian';
 import { DEFAULT_SETTINGS, VeilbitSettings, VeilbitSettingTab } from './settings';
+import { createSecretEditorExtension } from './secret-editor-extension';
 
 const SECRET_PATTERN = /^veilbit-secret:([A-Za-z0-9_-]+)$/;
 
@@ -16,13 +18,31 @@ export default class VeilbitPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new VeilbitSettingTab(this.app, this));
+		this.registerEditorExtension(
+			createSecretEditorExtension(
+				(encoded) => this.decodeSecret(encoded),
+				(secret) => this.maskFor(secret),
+				(encoded, from) => {
+					const secret = this.decodeSecret(encoded);
+					if (secret !== null) {
+						this.openSecret(secret, (updatedSecret) => {
+							this.replaceSecretAt(from, encoded, `\`veilbit-secret:${this.encodeSecret(updatedSecret)}\``);
+						});
+					}
+				},
+				(encoded, from) => {
+					const secret = this.decodeSecret(encoded);
+					if (secret !== null) this.replaceSecretAt(from, encoded, secret);
+				},
+			),
+		);
 
 		this.registerEvent(
 			this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
 				if (editor.getSelection()) {
 					menu.addItem((item) =>
 						item
-							.setTitle('Скрыть как секрет')
+							.setTitle('Hide as secret')
 							.setIcon('eye-off')
 							.onClick(() => this.hideSelection(editor)),
 					);
@@ -45,7 +65,7 @@ export default class VeilbitPlugin extends Plugin {
 				display.textContent = this.maskFor(secret);
 				display.setAttribute('role', 'button');
 				display.setAttribute('tabindex', '0');
-				display.setAttribute('aria-label', 'Открыть секрет');
+				display.setAttribute('aria-label', 'Open secret');
 				display.addEventListener('click', () => this.openSecret(secret));
 				display.addEventListener('keydown', (event) => {
 					if (event.key === 'Enter' || event.key === ' ') {
@@ -59,7 +79,7 @@ export default class VeilbitPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'hide-selection-as-secret',
-			name: 'Скрыть выделенный текст как секрет',
+			name: 'Hide selected text as secret',
 			editorCallback: (editor: Editor) => this.hideSelection(editor),
 		});
 	}
@@ -78,12 +98,15 @@ export default class VeilbitPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			if (leaf.view instanceof MarkdownView) leaf.view.editor.refresh();
+		});
 	}
 
 	private hideSelection(editor: Editor) {
 		const selected = editor.getSelection();
 		if (!selected) {
-			new Notice('Сначала выделите текст.');
+			new Notice('Select some text first.');
 			return;
 		}
 
@@ -116,41 +139,78 @@ export default class VeilbitPlugin extends Plugin {
 		return this.settings.maskSymbol.repeat(Math.min(length, 1000));
 	}
 
-	private openSecret(secret: string) {
-		new SecretModal(this.app, secret).open();
+	private replaceSecretAt(from: number, oldEncoded: string, replacement: string) {
+		const expected = `\`veilbit-secret:${oldEncoded}\``;
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view) return;
+		const editor = view.editor;
+		const lineNumber = editor.offsetToPos(from).line;
+		const lineStart = editor.posToOffset({ line: lineNumber, ch: 0 });
+		const start = from - lineStart;
+		const line = editor.getLine(lineNumber);
+		if (line.slice(start, start + expected.length) !== expected) return;
+
+		editor.replaceRange(
+			replacement,
+			{ line: lineNumber, ch: start },
+			{ line: lineNumber, ch: start + expected.length },
+		);
+	}
+
+	private openSecret(secret: string, onSave?: (secret: string) => void) {
+		new SecretModal(this.app, secret, onSave).open();
 	}
 }
 
 class SecretModal extends Modal {
-	constructor(app: VeilbitPlugin['app'], private readonly secret: string) {
+	private value: string;
+	private textarea!: HTMLTextAreaElement;
+
+	constructor(
+		app: VeilbitPlugin['app'],
+		secret: string,
+		private readonly onSave?: (secret: string) => void,
+	) {
 		super(app);
+		this.value = secret;
 	}
 
 	onOpen() {
-		this.titleEl.setText('Секрет');
+		this.titleEl.setText('Secret');
 		this.contentEl.empty();
-		new Setting(this.contentEl)
-			.setName('Значение')
-			.addText((text) => {
-				text.setValue(this.secret);
-				text.inputEl.readOnly = true;
-			});
+		const editor = this.contentEl.createEl('textarea', {
+			cls: 'veilbit-secret-editor',
+			attr: { 'aria-label': 'Secret value', rows: '1', wrap: 'soft' },
+		});
+		this.textarea = editor;
+		this.textarea.value = this.value;
+		this.textarea.addEventListener('input', () => {
+			this.value = this.textarea.value;
+			this.fitTextarea();
+		});
+		this.fitTextarea();
+
 		new Setting(this.contentEl).addButton((button) =>
 			button
-				.setButtonText('Копировать')
+				.setButtonText('Copy')
 				.setCta()
 				.onClick(async () => {
 					try {
-						await navigator.clipboard.writeText(this.secret);
-						new Notice('Секрет скопирован.');
+						await navigator.clipboard.writeText(this.value);
+						new Notice('Secret copied.');
 					} catch {
-						new Notice('Не удалось скопировать секрет.');
+						new Notice('Could not copy the secret.');
 					}
 				}),
 		);
 	}
 
+	private fitTextarea() {
+		this.textarea.setCssProps({ '--veilbit-textarea-height': `${Math.max(this.textarea.scrollHeight, 40)}px` });
+	}
+
 	onClose() {
+		this.onSave?.(this.value);
 		this.contentEl.empty();
 	}
 }

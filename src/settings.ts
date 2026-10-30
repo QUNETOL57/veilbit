@@ -20,12 +20,12 @@ export class VeilbitSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 		new Setting(containerEl)
-			.setName('Отображение секретов')
+			.setName('Secret display')
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName('Символ маски')
-			.setDesc('Символ, которым отображается секрет. По умолчанию — ●.')
+			.setName('Mask symbol')
+			.setDesc('The character used to mask secrets. Defaults to ●.')
 			.addText((text) =>
 				text
 					.setPlaceholder('●')
@@ -37,8 +37,8 @@ export class VeilbitSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('Длина маски')
-			.setDesc('0 — столько же символов, сколько в секрете. Укажите число, чтобы задать фиксированную длину.')
+			.setName('Mask length')
+			.setDesc('Set to 0 to match the secret length, or enter a number for a fixed length.')
 			.addText((text) =>
 				text
 					.setPlaceholder('0')
