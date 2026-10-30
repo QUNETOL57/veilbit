@@ -172,6 +172,7 @@ class SecretModal extends Modal {
 		private readonly onSave?: (secret: string) => void,
 	) {
 		super(app);
+		this.modalEl.addClass('veilbit-secret-modal');
 		this.value = secret;
 	}
 

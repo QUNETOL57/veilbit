@@ -1,8 +1,9 @@
 {
 	"id": "veilbit",
 	"name": "Veilbit",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.0.0",
 	"description": "Mask secrets in your notes and reveal them on click.",
+	"author": "QUNETOL57",
 	"isDesktopOnly": false
 }

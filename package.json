@@ -1,6 +1,6 @@
 {
 	"name": "veilbit",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Mask secrets in your notes and reveal them on click.",
 	"main": "main.js",
 	"type": "module",

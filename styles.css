@@ -27,7 +27,7 @@
 	width: 100%;
 }
 
-.modal:has(.veilbit-secret-editor) {
+.veilbit-secret-modal {
 	max-width: min(38rem, calc(100vw - 2rem));
 	width: min(38rem, calc(100vw - 2rem));
 }
