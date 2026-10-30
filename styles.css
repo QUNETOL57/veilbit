@@ -1,8 +1,15 @@
-/*
+.veilbit-secret {
+	background-color: var(--code-background);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	cursor: pointer;
+	font-family: var(--font-monospace);
+	padding: 0 0.2em;
+	user-select: none;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
+.veilbit-secret:hover,
+.veilbit-secret:focus-visible {
+	color: var(--text-normal);
+	outline: 1px solid var(--interactive-accent);
+}

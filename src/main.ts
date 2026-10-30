@@ -1,114 +1,156 @@
 import {
 	Editor,
-	MarkdownView,
-	MarkdownFileInfo,
+	Menu,
 	Modal,
 	Notice,
 	Plugin,
+	Setting,
 } from 'obsidian';
-import {
-	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
-} from './settings';
+import { DEFAULT_SETTINGS, VeilbitSettings, VeilbitSettingTab } from './settings';
 
-// Remember to rename these classes and interfaces!
+const SECRET_PATTERN = /^veilbit-secret:([A-Za-z0-9_-]+)$/;
 
-export default class MyPlugin extends Plugin {
-	settings!: MyPluginSettings;
+export default class VeilbitPlugin extends Plugin {
+	settings!: VeilbitSettings;
 
 	async onload() {
 		await this.loadSettings();
+		this.addSettingTab(new VeilbitSettingTab(this.app, this));
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			},
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
-			},
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+		this.registerEvent(
+			this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
+				if (editor.getSelection()) {
+					menu.addItem((item) =>
+						item
+							.setTitle('Скрыть как секрет')
+							.setIcon('eye-off')
+							.onClick(() => this.hideSelection(editor)),
+					);
 				}
-				return false;
-			},
-		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
+			}),
 		);
-	}
 
-	onunload() {}
+		this.registerMarkdownPostProcessor((element) => {
+			for (const codeEl of Array.from(element.querySelectorAll('code'))) {
+				if (codeEl.closest('pre')) continue;
+				const match = SECRET_PATTERN.exec(codeEl.textContent ?? '');
+				const encoded = match?.[1];
+				if (!encoded) continue;
+
+				const secret = this.decodeSecret(encoded);
+				if (secret === null) continue;
+
+				const display = createSpan();
+				display.className = 'veilbit-secret';
+				display.textContent = this.maskFor(secret);
+				display.setAttribute('role', 'button');
+				display.setAttribute('tabindex', '0');
+				display.setAttribute('aria-label', 'Открыть секрет');
+				display.addEventListener('click', () => this.openSecret(secret));
+				display.addEventListener('keydown', (event) => {
+					if (event.key === 'Enter' || event.key === ' ') {
+						event.preventDefault();
+						this.openSecret(secret);
+					}
+				});
+				codeEl.replaceWith(display);
+			}
+		});
+
+		this.addCommand({
+			id: 'hide-selection-as-secret',
+			name: 'Скрыть выделенный текст как секрет',
+			editorCallback: (editor: Editor) => this.hideSelection(editor),
+		});
+	}
 
 	async loadSettings() {
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
+			(await this.loadData()) as Partial<VeilbitSettings>,
 		);
+		if (typeof this.settings.maskLength !== 'number' || this.settings.maskLength < 0) {
+			this.settings.maskLength = 0;
+		}
+		if (!this.settings.maskSymbol) this.settings.maskSymbol = DEFAULT_SETTINGS.maskSymbol;
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+
+	private hideSelection(editor: Editor) {
+		const selected = editor.getSelection();
+		if (!selected) {
+			new Notice('Сначала выделите текст.');
+			return;
+		}
+
+		const encoded = this.encodeSecret(selected);
+		editor.replaceSelection(`\`veilbit-secret:${encoded}\``);
+	}
+
+	private encodeSecret(secret: string): string {
+		const bytes = new TextEncoder().encode(secret);
+		let binary = '';
+		for (const byte of bytes) binary += String.fromCharCode(byte);
+		return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+	}
+
+	private decodeSecret(encoded: string): string | null {
+		try {
+			const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+			const binary = atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4));
+			const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+			return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+		} catch {
+			return null;
+		}
+	}
+
+	private maskFor(secret: string): string {
+		const length = this.settings.maskLength > 0
+			? this.settings.maskLength
+			: Array.from(secret).length;
+		return this.settings.maskSymbol.repeat(Math.min(length, 1000));
+	}
+
+	private openSecret(secret: string) {
+		new SecretModal(this.app, secret).open();
+	}
 }
 
-class SampleModal extends Modal {
+class SecretModal extends Modal {
+	constructor(app: VeilbitPlugin['app'], private readonly secret: string) {
+		super(app);
+	}
+
 	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
+		this.titleEl.setText('Секрет');
+		this.contentEl.empty();
+		new Setting(this.contentEl)
+			.setName('Значение')
+			.addText((text) => {
+				text.setValue(this.secret);
+				text.inputEl.readOnly = true;
+			});
+		new Setting(this.contentEl).addButton((button) =>
+			button
+				.setButtonText('Копировать')
+				.setCta()
+				.onClick(async () => {
+					try {
+						await navigator.clipboard.writeText(this.secret);
+						new Notice('Секрет скопирован.');
+					} catch {
+						new Notice('Не удалось скопировать секрет.');
+					}
+				}),
+		);
 	}
 
 	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
+		this.contentEl.empty();
 	}
 }
