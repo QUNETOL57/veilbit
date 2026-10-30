@@ -4,7 +4,11 @@ Veilbit masks secret values in your Obsidian notes and lets you reveal or copy t
 
 ## Installation
 
-After Veilbit is available in the Community plugins directory, install it from **Settings → Community plugins → Browse**. To install a release manually, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/veilbit/`, then reload Obsidian and enable Veilbit under **Settings → Community plugins**.
+Install Veilbit from **Settings → Community plugins → Browse**.
+
+## Important: secret storage
+
+Veilbit does not keep a separate password store and does not send secrets to any external service. Secret values are included in the Markdown note as reversible base64url-encoded text; this is encoding, not encryption. Anyone who can access the note can decode or reveal its secrets. **Sharing, syncing, or transferring a note may expose its secrets to other people. Do not use Veilbit as secure password storage.**
 
 ## Usage
 
@@ -30,17 +34,3 @@ You can also run **Hide selected text as secret** from the Command Palette.
 
 - **Mask symbol** — the character used to display a masked secret. Defaults to `●`.
 - **Mask length** — set to `0` to show one mask character per character in the secret, or enter a positive number for a fixed mask length.
-
-## Storage and privacy
-
-Secret values are stored in the Markdown note as base64url-encoded text. This encoding is not encryption; anyone with access to the note can decode the value. Do not use Veilbit to protect data from someone who can read your vault files.
-
-Veilbit works locally and does not send note contents to external services.
-
-## Development
-
-Install dependencies with `npm ci`. Use `npm run dev` to watch and rebuild, `npm run build` to create a production build, and `npm run lint` to run ESLint.
-
-## Release
-
-Build the plugin with `npm run build`, then attach `main.js`, `manifest.json`, and `styles.css` to the GitHub release whose tag matches the version in `manifest.json` (without a `v` prefix).
