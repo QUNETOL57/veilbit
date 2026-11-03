@@ -17,6 +17,7 @@ const SECRET_PATTERN = /`veilbit-secret:([A-Za-z0-9_-]+)`/g;
 class SecretWidget extends WidgetType {
 	constructor(
 		private readonly encoded: string,
+		private readonly secret: string,
 		private readonly mask: string,
 		private readonly from: number,
 		private readonly openSecret: (encoded: string, from: number) => void,
@@ -33,6 +34,7 @@ class SecretWidget extends WidgetType {
 		const element = createSpan();
 		element.className = 'veilbit-secret';
 		element.textContent = this.mask;
+		element.setAttribute('data-veilbit-value', this.secret);
 		element.setAttribute('role', 'button');
 		element.setAttribute('tabindex', '0');
 		element.setAttribute('aria-label', 'Open secret');
@@ -112,6 +114,7 @@ export function createSecretEditorExtension(
 								decoration: Decoration.replace({
 									widget: new SecretWidget(
 										encoded,
+										secret,
 										maskFor(secret),
 										from,
 										openSecret,

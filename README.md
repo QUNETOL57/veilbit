@@ -30,6 +30,8 @@ Veilbit does not keep a separate password store and does not send secrets to any
 
 You can also run **Hide selected text as secret** from the Command Palette.
 
+Copycel copies the secret text instead of the mask when you copy a table cell that contains one.
+
 ## Settings
 
 - **Mask symbol** — the character used to display a masked secret. Defaults to `●`.

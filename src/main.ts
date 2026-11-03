@@ -63,6 +63,7 @@ export default class VeilbitPlugin extends Plugin {
 				const display = createSpan();
 				display.className = 'veilbit-secret';
 				display.textContent = this.maskFor(secret);
+				display.setAttribute('data-veilbit-value', secret);
 				display.setAttribute('role', 'button');
 				display.setAttribute('tabindex', '0');
 				display.setAttribute('aria-label', 'Open secret');
